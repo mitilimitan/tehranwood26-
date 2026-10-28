@@ -1,0 +1,12 @@
+{
+  "name": "paint-shop-bot",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "paint-shop-db",
+      "migrations_dir": "."
+    }
+  ]
+}

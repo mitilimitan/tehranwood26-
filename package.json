@@ -1,0 +1,19 @@
+{
+  "name": "paint-shop-bot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler d1 migrations apply DB --remote && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "BOT_TOKEN": { "description": "Bot token from @BotFather" },
+      "OWNER_TELEGRAM_ID": { "description": "Numeric Telegram ID of the store owner (from @userinfobot)" },
+      "WEBHOOK_SECRET": { "description": "Random string, letters/digits/_/- only, 32+ chars" },
+      "SETUP_KEY": { "description": "Another random string used once to register the webhook" }
+    }
+  }
+}
