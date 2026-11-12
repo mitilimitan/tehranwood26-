@@ -1,11 +1,12 @@
 import { BROWSE_PERMS, Categories, UserError, clip, currencyLabel, fmt, getAccess, isOwner, personLabel, requireOwner, requirePerm, tg } from './core.js';
+import { Orders } from './orders.js';
 import { Admins, Products, isBuyable, weightOf } from './store.js';
 export const btn = (text, data) => ({ text, callback_data: data });
 export const statusIcon = (c) => (c.is_active ? '✅' : '⛔');
 export const onOff = (b, a, c) => (b ? a : c);
 
 export function customerHome(env, isStaff) {
-  const rows = [[btn('🛍 دسته‌بندی محصولات', 'c:l:0')]];
+  const rows = [[btn('🛍 دسته‌بندی محصولات', 'c:l:0')], [btn('🧺 سبد خرید', 'k:v'), btn('📦 سفارش‌های من', 'o:l')]];
   if (isStaff) rows.push([btn('⚙️ پنل مدیریت', 'adm:menu')]);
   return { text: 'به فروشگاه رنگ خوش آمدید. یکی از گزینه‌ها را انتخاب کنید:', keyboard: rows };
 }
@@ -25,6 +26,7 @@ export async function customerCategoryView(env, parentId) {
 }
 
 export async function customerProductView(env, pid, cid) {
+  await Orders.expireDue(env);
   const p = await Products.get(env, pid);
   const back = [[btn('🔙 بازگشت', `c:l:${cid || 0}`)]];
   if (!p || !p.is_published) return { text: 'این محصول در دسترس نیست.', keyboard: back };
@@ -41,7 +43,10 @@ export async function customerProductView(env, pid, cid) {
     const w = weightOf(v);
     lines.push(`• ${v.label}${w ? ` (وزن: ${fmt(w)} کیلوگرم)` : ''} — ${fmt(v.price)} ${cur} — ${isBuyable(v) ? '✅ موجود' : '❌ ناموجود'}`);
   }
-  return { text: clip(lines.join('\n')), keyboard: back };
+  const rows = [];
+  if (p.is_published) for (const v of vars) if (isBuyable(v)) rows.push([btn(`🧺 افزودن به سبد: ${v.label}`.slice(0, 60), `k:add:${v.id}`)]);
+  rows.push([btn('🧺 سبد خرید', 'k:v')], ...back);
+  return { text: clip(lines.join('\n')), keyboard: rows };
 }
 
 export async function adminMenuView(env, userId) {
@@ -51,6 +56,8 @@ export async function adminMenuView(env, userId) {
   if (access.has('catalog.manage')) rows.push([btn('📂 دسته‌بندی‌ها', 'cat:l:0')]);
   if (BROWSE_PERMS.some((p) => access.has(p))) rows.push([btn('🛒 محصولات و قیمت و موجودی', 'prd:l:0')]);
   if (access.has('price.manage')) rows.push([btn('💲 تغییر درصدی قیمت‌ها', 'bp:menu')]);
+  if (access.has('orders.manage')) rows.push([btn('📦 سفارش‌ها', 'ao:l')]);
+  if (access.has('payments.review')) rows.push([btn('💳 بررسی رسیدها', 'ao:rv'), btn('⚙️ شماره کارت', 'set:card')]);
   if (access.role === 'owner') rows.push([btn('👥 مدیریت ادمین‌ها', 'adm:list')]);
   const empty = rows.length === 0;
   rows.push([btn('🏠 منوی اصلی', 'c:home')]);
