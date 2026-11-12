@@ -1,7 +1,10 @@
-import { Categories, MAX_IMAGES_PER_PRODUCT, State, UserError, cleanText, currencyLabel, fmt, getAccess, parseDecimalIn, parseIntIn } from './core.js';
+import { Categories, MAX_IMAGES_PER_PRODUCT, State, UserError, cleanText, currencyLabel, fmt, getAccess, normalizeDigits, parseDecimalIn, parseIntIn } from './core.js';
 import { BulkPrice, Variants } from './stock.js';
 import { ProductImages, Products } from './store.js';
 import { adminCategoryDetail, adminMenuView, adminRoleChoiceView, btn, customerHome } from './views_a.js';
+import { Orders, Settings, parseCard } from './orders.js';
+import { Payments, notifyReviewers } from './payments.js';
+import { cardView, checkoutConfirmView, customerOrderView, paymentCaption, paymentKeyboard } from './orders_views.js';
 import { CANCEL_HINT, adminProductDetail, adminVariantDetail, bulkPreviewView, say, showView, upsertUser } from './views_b.js';
 export async function handleState(env, userId, chatId, state, text, msg) {
   const p = state.payload;
@@ -98,6 +101,54 @@ export async function handleState(env, userId, chatId, state, text, msg) {
       const items = await BulkPrice.preview(env, userId, p.scope, pct);
       await State.set(env, userId, 'bp_confirm', { scope: p.scope, pct, items });
       return showView(env, chatId, null, await bulkPreviewView(env, items, pct));
+    }
+    case 'ord_name': {
+      const name = cleanText(text, { min: 2, max: 60, label: 'نام' });
+      await State.set(env, userId, 'ord_phone', { name });
+      return say(env, chatId, 'شماره موبایل گیرنده را بفرستید:' + CANCEL_HINT);
+    }
+    case 'ord_phone': {
+      const phone = normalizeDigits(text).replace(/^\+/, '');
+      if (!/^\d{10,13}$/.test(phone)) throw new UserError('شماره موبایل معتبر نیست. مثال: 09123456789');
+      await State.set(env, userId, 'ord_addr', { ...p, phone });
+      return say(env, chatId, 'آدرس کامل تحویل را بفرستید:' + CANCEL_HINT);
+    }
+    case 'ord_addr': {
+      const address = cleanText(text, { min: 10, max: 300, label: 'آدرس' });
+      const d = { name: p.name, phone: p.phone, address };
+      const view = await checkoutConfirmView(env, userId, d);
+      await State.set(env, userId, 'ord_confirm', d);
+      return showView(env, chatId, null, view);
+    }
+    case 'ord_receipt': {
+      const sizes = Array.isArray(msg?.photo) ? msg.photo : [];
+      const best = sizes[sizes.length - 1];
+      if (!best?.file_id) throw new UserError('لطفاً رسید را به‌صورت «عکس» بفرستید (نه فایل و نه متن).');
+      const { order, payment } = await Orders.submitReceipt(env, userId, p.orderId, best.file_id, best.file_unique_id);
+      await done();
+      const items = await Orders.items(env, order.id);
+      const cust = await Orders.customer(env, order);
+      await notifyReviewers(env, paymentCaption(order, items, cust), best.file_id, paymentKeyboard(payment.id, order.id));
+      await say(env, chatId, '✅ رسید شما دریافت شد. پس از بررسی، نتیجه به شما اعلام می‌شود.');
+      return showView(env, chatId, null, await customerOrderView(env, userId, order.id));
+    }
+    case 'pay_reject': {
+      const r = await Payments.reject(env, userId, p.paymentId, text);
+      await done();
+      const cust = await Orders.customer(env, r.order);
+      try {
+        await say(env, cust.telegram_id, `❌ رسید سفارش ${r.order.public_code} تأیید نشد.\nدلیل: ${r.reason}\nمی‌توانید از «سفارش‌های من» رسید درست را دوباره بفرستید.`);
+      } catch { /* customer may have blocked the bot */ }
+      return say(env, chatId, `رسید رد شد و به مشتری اطلاع داده شد (${r.order.public_code}).`);
+    }
+    case 'set_card': {
+      const number = parseCard(text);
+      await State.set(env, userId, 'set_holder', { number });
+      return say(env, chatId, 'نام صاحب کارت را بفرستید (برای نداشتن نام، یک خط تیره - بفرستید):' + CANCEL_HINT);
+    }
+    case 'set_holder': {
+      await Settings.setCard(env, userId, p.number, text);
+      await done(); return showView(env, chatId, null, await cardView(env, userId));
     }
     default:
       return; // e.g. bp_confirm waits for the confirm button, not for text
