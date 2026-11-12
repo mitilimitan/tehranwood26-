@@ -2,6 +2,7 @@ import { BROWSE_PERMS, Categories, State, UserError, currencyLabel, fmt, getAcce
 import { BulkPrice, Variants } from './stock.js';
 import { Admins, ProductImages, Products } from './store.js';
 import { adminAddView, adminCategoryDetail, adminCategoryList, adminDetailView, adminListView, adminMenuView, adminRoleChoiceView, btn, customerCategoryView, customerHome, customerProductView } from './views_a.js';
+import { handleShopCallback, isShopNs } from './orders_cb.js';
 import { CANCEL_HINT, adminImagesView, adminProductCategories, adminProductDetail, adminProductList, adminVariantDetail, adminVariantHistory, bulkMenuView, say, sendProductPhotos, showView } from './views_b.js';
 export async function handleCallback(env, cq) {
   const chat = cq.message?.chat, messageId = cq.message?.message_id;
@@ -19,6 +20,7 @@ export async function handleCallback(env, cq) {
   };
 
   try {
+    if (isShopNs(ns)) return await handleShopCallback(env, cq, { chatId: chat.id, messageId, userId, answer, ask });
     let view = null;
     if (ns === 'c') {
       if (action === 'home') view = customerHome(env, !!(await getAccess(env, userId)));
