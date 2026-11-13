@@ -1,7 +1,7 @@
 import { State, UserError, requirePerm, tg } from './core.js';
 import { Cart, Orders } from './orders.js';
 import { Payments } from './payments.js';
-import { adminOrderListView, adminOrderView, cancelConfirmView, cardView, cartView, customerOrderView, myOrdersView, paymentCaption, paymentKeyboard, reviewListView, statusLabel } from './orders_views.js';
+import { adminOrderListView, adminOrderView, cancelConfirmView, cardView, cartView, customerOrderView, variantPickView, myOrdersView, paymentCaption, paymentKeyboard, reviewListView, statusLabel } from './orders_views.js';
 import { say, showView } from './views_b.js';
 
 const SHOP_NS = ['k', 'o', 'ao', 'pay', 'set'];
@@ -18,17 +18,25 @@ export async function handleShopCallback(env, cq, ctx) {
   const [ns, action, a, b] = cq.data.split(':');
   const n = Number(a);
   const idOk = a !== undefined && a !== '' && Number.isInteger(n) && n > 0;
-  let view = null;
+  let view = null, inPlace = false;
 
   if (ns === 'k') {
     if (action === 'v') view = await cartView(env, userId);
     else if (action === 'add' && idOk) {
       await Cart.change(env, userId, n, 1);
       return void (await tg(env, 'answerCallbackQuery', { callback_query_id: cq.id, text: '✅ به سبد خرید اضافه شد' }));
-    } else if (action === 'inc' && idOk) { await Cart.change(env, userId, n, 1); view = await cartView(env, userId); }
-    else if (action === 'dec' && idOk) { await Cart.change(env, userId, n, -1); view = await cartView(env, userId); }
-    else if (action === 'rm' && idOk) { await Cart.remove(env, userId, n); view = await cartView(env, userId); }
-    else if (action === 'clr') { await Cart.clear(env, userId); view = await cartView(env, userId); }
+    } else if (action === 'inc' && idOk) { await Cart.change(env, userId, n, 1); view = await cartView(env, userId); inPlace = true; }
+    else if (action === 'dec' && idOk) { await Cart.change(env, userId, n, -1); view = await cartView(env, userId); inPlace = true; }
+    else if (action === 'rm' && idOk) { await Cart.remove(env, userId, n); view = await cartView(env, userId); inPlace = true; }
+    else if (action === 'clr') { await Cart.clear(env, userId); view = await cartView(env, userId); inPlace = true; }
+    else if (action === 's' && idOk) view = await variantPickView(env, n, 1);
+    else if (action === 'q' && idOk) { view = await variantPickView(env, n, Number(b)); inPlace = true; }
+    else if (action === 'a' && idOk) {
+      const q = Number(b);
+      if (!Number.isInteger(q) || q < 1 || q > 999) throw new UserError('تعداد نامعتبر است.');
+      await Cart.change(env, userId, n, q);
+      view = await cartView(env, userId);
+    } else if (action === 't' && idOk) return ask('cart_qty', { vid: n }, 'تعداد مورد نظر را به‌صورت عدد بفرستید:');
     else if (action === 'co') {
       await Orders.precheck(env, userId);
       return ask('ord_name', {}, 'نام و نام خانوادگی گیرنده را بفرستید:');
@@ -91,5 +99,5 @@ export async function handleShopCallback(env, cq, ctx) {
     }
   }
   await answer();
-  if (view) await showView(env, chatId, messageId, view);
+  if (view) await showView(env, chatId, messageId, view, { inPlace });
 }
