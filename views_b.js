@@ -154,7 +154,7 @@ export async function sendProductPhotos(env, chatId, pid) {
 export async function upsertUser(env, from) {
   await env.DB.prepare(
     `INSERT INTO users (telegram_id, first_name, username) VALUES (?1, ?2, ?3)
-     ON CONFLICT(telegram_id) DO UPDATE SET first_name = ?2, username = ?3`
+     ON CONFLICT(telegram_id) DO UPDATE SET first_name = ?2, username = ?3, bot_blocked = 0`
   ).bind(from.id, from.first_name ?? null, from.username ?? null).run();
 }
 
