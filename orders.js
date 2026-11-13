@@ -16,6 +16,11 @@ export const Settings = {
     const r = await env.DB.prepare('SELECT value FROM store_settings WHERE key = ?1').bind(key).first();
     return r?.value ?? null;
   },
+  async put(env, key, value) {
+    await env.DB.prepare(`INSERT INTO store_settings (key, value) VALUES (?1, ?2)
+      ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = datetime('now')`).bind(key, value).run();
+  },
+  async del(env, key) { await env.DB.prepare('DELETE FROM store_settings WHERE key = ?1').bind(key).run(); },
   async card(env) {
     return { number: await Settings.get(env, 'card_number'), holder: await Settings.get(env, 'card_holder') };
   },
