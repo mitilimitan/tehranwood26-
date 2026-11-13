@@ -58,6 +58,7 @@ export async function adminMenuView(env, userId) {
   if (access.has('price.manage')) rows.push([btn('💲 تغییر درصدی قیمت‌ها', 'bp:menu')]);
   if (access.has('orders.manage')) rows.push([btn('📦 سفارش‌ها', 'ao:l')]);
   if (access.has('support.manage')) rows.push([btn('💬 پشتیبانی', 'sp:l')]);
+  if (access.has('broadcast.manage')) rows.push([btn('📣 پیام همگانی', 'bc:l')]);
   if (access.has('payments.review')) rows.push([btn('💳 بررسی رسیدها', 'ao:rv'), btn('⚙️ شماره کارت', 'set:card')]);
   if (access.has('catalog.manage')) rows.push([btn('👋 پیام خوش‌آمد', 'cfg:w')]);
   if (access.has('settings.manage')) rows.push([btn('📢 عضویت اجباری کانال', 'cfg:ch')]);
