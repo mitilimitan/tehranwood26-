@@ -40,7 +40,7 @@ export function cleanName(input) {
 
 // ───────────────────────── access control ─────────────────────────
 export const ROLE_PERMS = {
-  admin: ['catalog.manage', 'price.manage', 'stock.manage', 'orders.manage', 'payments.review', 'reports.view', 'support.manage'],
+  admin: ['catalog.manage', 'price.manage', 'stock.manage', 'orders.manage', 'payments.review', 'reports.view', 'support.manage', 'broadcast.manage'],
   operator: ['orders.manage', 'support.manage'],
 };
 export const ALL_PERMS = [...ROLE_PERMS.admin, 'admins.manage', 'settings.manage'];
