@@ -1,6 +1,7 @@
 // Paint Shop Bot — entry point (split into small modules so it can be pasted on a phone).
 import { handleCallback } from './callbacks.js';
 import { MAX_BODY_BYTES, safeEqual, tg } from './core.js';
+import { Broadcast } from './broadcast.js';
 import { CUSTOMER_COMMANDS, handleMessage } from './messages.js';
 async function handleWebhook(request, env) {
   if (request.method !== 'POST') return new Response('method not allowed', { status: 405 });
@@ -43,6 +44,10 @@ async function handleSetup(url, env) {
 }
 
 export default {
+  // Cron trigger (wrangler.jsonc "triggers"): sends the next batch of a running broadcast
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(Broadcast.tick(env).catch((err) => console.error('broadcast tick failed:', err?.message ?? 'unknown')));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
