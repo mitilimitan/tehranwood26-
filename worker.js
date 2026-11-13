@@ -1,7 +1,7 @@
 // Paint Shop Bot — entry point (split into small modules so it can be pasted on a phone).
 import { handleCallback } from './callbacks.js';
 import { MAX_BODY_BYTES, safeEqual, tg } from './core.js';
-import { handleMessage } from './flows.js';
+import { CUSTOMER_COMMANDS, handleMessage } from './messages.js';
 async function handleWebhook(request, env) {
   if (request.method !== 'POST') return new Response('method not allowed', { status: 405 });
   const secret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
@@ -35,6 +35,10 @@ async function handleSetup(url, env) {
     allowed_updates: ['message', 'callback_query'],
     drop_pending_updates: true,
   });
+  if (result.ok) {
+    await tg(env, 'setMyCommands', { commands: CUSTOMER_COMMANDS });
+    await tg(env, 'setChatMenuButton', { menu_button: { type: 'commands' } });
+  }
   return Response.json({ ok: result.ok === true, description: result.description ?? null });
 }
 
