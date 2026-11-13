@@ -2,9 +2,11 @@ import { Categories, MAX_IMAGES_PER_PRODUCT, State, UserError, cleanText, curren
 import { BulkPrice, Variants } from './stock.js';
 import { ProductImages, Products } from './store.js';
 import { adminCategoryDetail, adminMenuView, adminRoleChoiceView, btn, customerHome } from './views_a.js';
-import { Orders, Settings, parseCard } from './orders.js';
+import { stateConfig } from './config.js';
+import { Cart, Orders, Settings, parseCard } from './orders.js';
+import { stateSupport } from './support.js';
 import { Payments, notifyReviewers } from './payments.js';
-import { cardView, checkoutConfirmView, customerOrderView, paymentCaption, paymentKeyboard } from './orders_views.js';
+import { cardView, cartView, checkoutConfirmView, customerOrderView, paymentCaption, paymentKeyboard } from './orders_views.js';
 import { CANCEL_HINT, adminProductDetail, adminVariantDetail, bulkPreviewView, say, showView, upsertUser } from './views_b.js';
 export async function handleState(env, userId, chatId, state, text, msg) {
   const p = state.payload;
@@ -150,40 +152,17 @@ export async function handleState(env, userId, chatId, state, text, msg) {
       await Settings.setCard(env, userId, p.number, text);
       await done(); return showView(env, chatId, null, await cardView(env, userId));
     }
-    default:
-      return; // e.g. bp_confirm waits for the confirm button, not for text
+    case 'cart_qty': {
+      const q = parseIntIn(text, { min: 1, max: 999, label: 'تعداد' });
+      await Cart.change(env, userId, p.vid, q);
+      await done(); return showView(env, chatId, null, await cartView(env, userId));
+    }
+    default: {
+      if (state.action.startsWith('sp_') || state.action.startsWith('cfg_')) {
+        const r = state.action.startsWith('sp_') ? await stateSupport(env, userId, chatId, state, text) : await stateConfig(env, userId, chatId, state, text);
+        if (r === true) await done();
+        return; // 'keep' = flow continues; false = unknown state
+      } // e.g. bp_confirm waits for the confirm button, not for text
+    }
   }
 }
-
-export async function handleMessage(env, msg) {
-  if (!msg.from || msg.chat?.type !== 'private') return;
-  const userId = msg.from.id, chatId = msg.chat.id;
-  await upsertUser(env, msg.from);
-  const text = (msg.text ?? '').trim();
-
-  try {
-    if (text === '/start' || text.startsWith('/start ')) {
-      await State.clear(env, userId);
-      const staff = !!(await getAccess(env, userId));
-      const view = customerHome(env, staff);
-      await showView(env, chatId, null, { ...view, text: `سلام ${msg.from.first_name ?? ''} 👋\n${view.text}` });
-      return;
-    }
-    if (text === '/admin') {
-      await showView(env, chatId, null, await adminMenuView(env, userId));
-      return;
-    }
-    if (text === '/cancel') {
-      await State.clear(env, userId);
-      await say(env, chatId, 'عملیات لغو شد.');
-      return;
-    }
-    const state = await State.get(env, userId);
-    if (!state || text.startsWith('/')) return;
-    await handleState(env, userId, chatId, state, text, msg);
-  } catch (err) {
-    if (err instanceof UserError) { await say(env, chatId, `⚠️ ${err.message}`); return; }
-    throw err;
-  }
-}
-
