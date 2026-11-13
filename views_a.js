@@ -6,7 +6,7 @@ export const statusIcon = (c) => (c.is_active ? '✅' : '⛔');
 export const onOff = (b, a, c) => (b ? a : c);
 
 export function customerHome(env, isStaff) {
-  const rows = [[btn('🛍 دسته‌بندی محصولات', 'c:l:0')], [btn('🧺 سبد خرید', 'k:v'), btn('📦 سفارش‌های من', 'o:l')]];
+  const rows = [[btn('🛍 دسته‌بندی محصولات', 'c:l:0')], [btn('🧺 سبد خرید', 'k:v'), btn('📦 سفارش‌های من', 'o:l')], [btn('💬 پشتیبانی', 'sp:new')]];
   if (isStaff) rows.push([btn('⚙️ پنل مدیریت', 'adm:menu')]);
   return { text: 'به فروشگاه رنگ خوش آمدید. یکی از گزینه‌ها را انتخاب کنید:', keyboard: rows };
 }
@@ -44,7 +44,7 @@ export async function customerProductView(env, pid, cid) {
     lines.push(`• ${v.label}${w ? ` (وزن: ${fmt(w)} کیلوگرم)` : ''} — ${fmt(v.price)} ${cur} — ${isBuyable(v) ? '✅ موجود' : '❌ ناموجود'}`);
   }
   const rows = [];
-  if (p.is_published) for (const v of vars) if (isBuyable(v)) rows.push([btn(`🧺 افزودن به سبد: ${v.label}`.slice(0, 60), `k:add:${v.id}`)]);
+  if (p.is_published) for (const v of vars) if (isBuyable(v)) rows.push([btn(`🛒 ${v.label} — ${fmt(v.price)} ${cur}`.slice(0, 60), `k:s:${v.id}`)]);
   rows.push([btn('🧺 سبد خرید', 'k:v')], ...back);
   return { text: clip(lines.join('\n')), keyboard: rows };
 }
@@ -57,7 +57,10 @@ export async function adminMenuView(env, userId) {
   if (BROWSE_PERMS.some((p) => access.has(p))) rows.push([btn('🛒 محصولات و قیمت و موجودی', 'prd:l:0')]);
   if (access.has('price.manage')) rows.push([btn('💲 تغییر درصدی قیمت‌ها', 'bp:menu')]);
   if (access.has('orders.manage')) rows.push([btn('📦 سفارش‌ها', 'ao:l')]);
+  if (access.has('support.manage')) rows.push([btn('💬 پشتیبانی', 'sp:l')]);
   if (access.has('payments.review')) rows.push([btn('💳 بررسی رسیدها', 'ao:rv'), btn('⚙️ شماره کارت', 'set:card')]);
+  if (access.has('catalog.manage')) rows.push([btn('👋 پیام خوش‌آمد', 'cfg:w')]);
+  if (access.has('settings.manage')) rows.push([btn('📢 عضویت اجباری کانال', 'cfg:ch')]);
   if (access.role === 'owner') rows.push([btn('👥 مدیریت ادمین‌ها', 'adm:list')]);
   const empty = rows.length === 0;
   rows.push([btn('🏠 منوی اصلی', 'c:home')]);
