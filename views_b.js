@@ -119,13 +119,19 @@ export async function bulkPreviewView(env, items, pct) {
 // ───────────────────────── Telegram plumbing ─────────────────────────
 export const CANCEL_HINT = '\n(برای لغو: /cancel)';
 
-export async function showView(env, chatId, messageId, view) {
+// New screens are sent as a NEW message (so the menu is always at the bottom of the chat) and the old
+// screen is removed. inPlace=true edits the current message instead (for + / - buttons).
+export async function showView(env, chatId, messageId, view, { inPlace = false } = {}) {
   const reply_markup = { inline_keyboard: view.keyboard };
-  if (messageId) {
+  if (messageId && inPlace) {
     const r = await tg(env, 'editMessageText', { chat_id: chatId, message_id: messageId, text: view.text, reply_markup });
     if (r.ok || /not modified/i.test(r.description ?? '')) return;
   }
-  await tg(env, 'sendMessage', { chat_id: chatId, text: view.text, reply_markup });
+  const sent = await tg(env, 'sendMessage', { chat_id: chatId, text: view.text, reply_markup });
+  if (messageId && !inPlace && sent.ok) {
+    const del = await tg(env, 'deleteMessage', { chat_id: chatId, message_id: messageId });
+    if (!del.ok) await tg(env, 'editMessageReplyMarkup', { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+  }
 }
 
 export async function say(env, chatId, text) {
