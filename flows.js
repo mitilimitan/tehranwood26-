@@ -2,6 +2,7 @@ import { Categories, MAX_IMAGES_PER_PRODUCT, State, UserError, cleanText, curren
 import { BulkPrice, Variants } from './stock.js';
 import { ProductImages, Products } from './store.js';
 import { adminCategoryDetail, adminMenuView, adminRoleChoiceView, btn, customerHome } from './views_a.js';
+import { stateBroadcast } from './broadcast.js';
 import { stateConfig } from './config.js';
 import { Cart, Orders, Settings, parseCard } from './orders.js';
 import { stateSupport } from './support.js';
@@ -158,6 +159,7 @@ export async function handleState(env, userId, chatId, state, text, msg) {
       await done(); return showView(env, chatId, null, await cartView(env, userId));
     }
     default: {
+      if (state.action === 'bc_msg') { if (await stateBroadcast(env, userId, chatId, state, msg)) await done(); return; }
       if (state.action.startsWith('sp_') || state.action.startsWith('cfg_')) {
         const r = state.action.startsWith('sp_') ? await stateSupport(env, userId, chatId, state, text) : await stateConfig(env, userId, chatId, state, text);
         if (r === true) await done();
