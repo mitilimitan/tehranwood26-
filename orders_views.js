@@ -1,7 +1,7 @@
 import { UserError, clip, currencyLabel, fmt, requirePerm } from './core.js';
 import { Cart, Orders, Settings, cardPretty } from './orders.js';
 import { Payments } from './payments.js';
-import { isBuyable } from './store.js';
+import { available, isBuyable } from './store.js';
 import { btn } from './views_a.js';
 
 export function statusLabel(o) {
@@ -148,4 +148,22 @@ export async function cardView(env, actor) {
     ? `💳 شماره کارت فروشگاه:\n${cardPretty(c.number)}${c.holder ? `\nبه نام: ${c.holder}` : ''}\n\nاین شماره به مشتری‌ها برای پرداخت نمایش داده می‌شود.`
     : '💳 شماره کارت هنوز ثبت نشده است. تا ثبت نشود، مشتری‌ها نمی‌توانند سفارش بدهند.';
   return { text, keyboard: [[btn('✏️ ویرایش شماره کارت', 'set:ed')], [btn('🔙 پنل مدیریت', 'adm:menu')]] };
+}
+
+// ── customer: choose quantity of one pack size
+export async function variantPickView(env, vid, qty) {
+  const v = await env.DB.prepare(
+    `SELECT v.*, p.name AS pname, p.is_published FROM product_variants v JOIN products p ON p.id = v.product_id WHERE v.id = ?1`).bind(vid).first();
+  if (!v || !v.is_published || !isBuyable(v)) return { text: 'این مورد در حال حاضر موجود نیست.', keyboard: [[btn('🔙 دسته‌ها', 'c:l:0')]] };
+  const cur = await currencyLabel(env);
+  const q = Math.min(Math.max(1, Number.isInteger(qty) ? qty : 1), Math.min(available(v), 99));
+  return {
+    text: `🎨 ${v.pname}\nبسته‌بندی: ${v.label}\nقیمت واحد: ${fmt(v.price)} ${cur}\n\nتعداد: ${fmt(q)}\nجمع: ${fmt(q * v.price)} ${cur}`,
+    keyboard: [
+      [btn('➖', `k:q:${vid}:${q - 1}`), btn(fmt(q), `k:q:${vid}:${q}`), btn('➕', `k:q:${vid}:${q + 1}`)],
+      [btn('✍️ تعداد دلخواه', `k:t:${vid}`)],
+      [btn(`🧺 افزودن ${fmt(q)} عدد به سبد`, `k:a:${vid}:${q}`)],
+      [btn('🔙 بازگشت به محصول', `c:p:${v.product_id}:0`)],
+    ],
+  };
 }
