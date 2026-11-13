@@ -3,6 +3,7 @@ import { BulkPrice, Variants } from './stock.js';
 import { Admins, ProductImages, Products } from './store.js';
 import { adminAddView, adminCategoryDetail, adminCategoryList, adminDetailView, adminListView, adminMenuView, adminRoleChoiceView, btn, customerCategoryView, customerHome, customerProductView } from './views_a.js';
 import { Gate, handleCfgCallback, isCfgNs } from './config.js';
+import { handleBroadcastCallback, isBroadcastNs } from './broadcast.js';
 import { handleShopCallback, isShopNs } from './orders_cb.js';
 import { handleSupportCallback, isSupportNs } from './support.js';
 import { CANCEL_HINT, adminImagesView, adminProductCategories, adminProductDetail, adminProductList, adminVariantDetail, adminVariantHistory, bulkMenuView, say, sendProductPhotos, showView } from './views_b.js';
@@ -26,6 +27,7 @@ export async function handleCallback(env, cq) {
     if (isCfgNs(ns) && ns === 'gate') return await handleCfgCallback(env, cq, ctx);
     if (await Gate.blocks(env, userId, chat.id, messageId)) return answer();
     if (isShopNs(ns)) return await handleShopCallback(env, cq, ctx);
+    if (isBroadcastNs(ns)) return await handleBroadcastCallback(env, cq, ctx);
     if (isSupportNs(ns)) return await handleSupportCallback(env, cq, ctx);
     if (isCfgNs(ns)) return await handleCfgCallback(env, cq, ctx);
     let view = null;
